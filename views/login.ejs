@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - Nexus</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    * { font-family: 'DM Sans', sans-serif; }
+    h1, h2, .brand { font-family: 'Syne', sans-serif; }
+
+    body {
+      background: #060612;
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .input-field {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen">
+
+  <div class="w-full max-w-md px-4">
+
+    <!-- Title -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl text-white font-bold">Nexus Login</h1>
+      <p class="text-white/40 text-sm">Welcome back 👋</p>
+    </div>
+
+    <!-- Card -->
+    <div class="glass p-8 rounded-2xl">
+
+      <form id="loginForm" class="space-y-4">
+
+        <div>
+          <label class="text-white/50 text-sm">Username</label>
+          <input id="l-user" type="text"
+            class="input-field w-full px-4 py-3 rounded-xl mt-1"
+            placeholder="Enter username">
+        </div>
+
+        <div>
+          <label class="text-white/50 text-sm">Password</label>
+          <input id="l-pass" type="password"
+            class="input-field w-full px-4 py-3 rounded-xl mt-1"
+            placeholder="Enter password">
+        </div>
+
+        <button type="submit"
+          class="btn-primary w-full py-3 rounded-xl text-white font-semibold">
+          Sign In
+        </button>
+
+      </form>
+
+      <!-- Link -->
+      <p class="text-center text-white/40 text-sm mt-5">
+        Don't have an account?
+        <a href="/signup" class="text-indigo-400 hover:underline">Create Account</a>
+      </p>
+
+    </div>
+
+  </div>
+
+<script>
+document.getElementById('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('l-user').value.trim();
+  const password = document.getElementById('l-pass').value;
+
+  if (!username || !password) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const res = await fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+  } else {
+    window.location = `/chat?token=${data.token}&username=${data.username}`;
+  }
+};
+</script>
+
+</body>
+</html>

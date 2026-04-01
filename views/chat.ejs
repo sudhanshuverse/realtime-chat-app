@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+
+    .brand {
+      font-family: 'Syne', sans-serif;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: #0e0e1c;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .room-item {
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+
+    .room-item:hover {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .room-item.active {
+      background: rgba(99, 102, 241, 0.18);
+      border-left: 2px solid #6366f1;
+    }
+
+    /* Chat area */
+    .chat-bg {
+      background: #0a0a14;
+      background-image:
+        radial-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Messages */
+    #messages {
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    .msg-bubble {
+      max-width: 72%;
+      word-break: break-word;
+    }
+
+    .msg-own .msg-bubble {
+      background: linear-gradient(135deg, #4f46e5, #6d28d9);
+      color: white;
+      border-radius: 18px 18px 4px 18px;
+    }
+
+    .msg-other .msg-bubble {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.9);
+      border-radius: 18px 18px 18px 4px;
+    }
+
+    .msg-deleted .msg-bubble {
+      background: rgba(255, 255, 255, 0.04) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      color: rgba(255, 255, 255, 0.25) !important;
+      font-style: italic;
+    }
+
+    /* Reactions */
+    .reaction-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .reaction-pill {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .reaction-pill:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: #6366f1;
+    }
+
+    .reaction-pill.mine {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: #6366f1;
+    }
+
+    /* Emoji picker */
+    .emoji-picker {
+      background: #1a1a2e;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      gap: 4px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+
+    .emoji-btn {
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 8px;
+      transition: all 0.1s;
+    }
+
+    .emoji-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: scale(1.2);
+    }
+
+    /* Context menu */
+    .ctx-menu {
+      background: #1a1a2e;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 6px;
+      min-width: 160px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      z-index: 200;
+    }
+
+    .ctx-item {
+      display: flex;
+      align-items: center;
+      gap-8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      transition: all 0.1s;
+    }
+
+    .ctx-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .ctx-item.danger {
+      color: #f87171;
+    }
+
+    .ctx-item.danger:hover {
+      background: rgba(239, 68, 68, 0.12);
+    }
+
+    /* Input area */
+    .input-area {
+      background: #0e0e1c;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    #msgInput {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+      resize: none;
+      max-height: 120px;
+      transition: border-color 0.2s;
+      line-height: 1.5;
+    }
+
+    #msgInput:focus {
+      outline: none;
+      border-color: rgba(99, 102, 241, 0.6);
+    }
+
+    #msgInput::placeholder {
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      transform: none;
+      cursor: not-allowed;
+    }
+
+    /* Status ticks */
+    .tick-sent {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .tick-delivered {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .tick-seen {
+      color: #818cf8;
+    }
+
+    /* Online badge */
+    .online-dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px #22c55e33;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.1);
+      }
+    }
+
+    .offline-dot {
+      width: 8px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+    }
+
+    /* Typing indicator */
+    .typing-dot {
+      animation: typingBounce 1.2s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typingBounce {
+
+      0%,
+      60%,
+      100% {
+        transform: translateY(0);
+      }
+
+      30% {
+        transform: translateY(-4px);
+      }
+    }
+
+    /* Reply preview */
+    .reply-preview {
+      background: rgba(99, 102, 241, 0.1);
+      border-left: 3px solid #6366f1;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* Avatar */
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* Message animation */
+    @keyframes msgIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .msg-animate {
+      animation: msgIn 0.2s ease forwards;
+    }
+
+    /* Room sidebar mobile toggle */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        transform: translateX(-100%);
+        transition: transform 0.3s;
+        width: 280px !important;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+    }
+
+    /* Unread badge */
+    .unread-badge {
+      background: #6366f1;
+      border-radius: 999px;
+      min-width: 20px;
+      height: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Date divider */
+    .date-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .date-divider span {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.25);
+      white-space: nowrap;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+
+    .date-divider::before,
+    .date-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .no-room {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+  <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+  <aside id="sidebar" class="sidebar flex flex-col w-72 h-screen flex-shrink-0">
+
+    <!-- Brand -->
+    <div class="px-5 py-4 flex items-center justify-between border-b border-white/5">
+      <div class="flex items-center gap-2.5">
+        <div
+          class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <span class="brand text-white font-700 text-lg tracking-tight">Nexus</span>
+      </div>
+      <button onclick="logout()" title="Logout" class="text-white/30 hover:text-red-400 transition-colors p-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Current User -->
+    <div class="px-5 py-3 flex items-center gap-3 border-b border-white/5">
+      <div class="avatar text-white flex-shrink-0" id="myAvatar"></div>
+      <div class="min-w-0">
+        <p class="text-white text-sm font-600 truncate" id="myUsername"></p>
+        <p class="text-white/30 text-xs">You</p>
+      </div>
+    </div>
+
+    <!-- Join Room -->
+    <div class="px-4 py-3 border-b border-white/5">
+      <div class="flex gap-2">
+        <input id="roomInput" placeholder="Room name..."
+          class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs placeholder-white/30 focus:outline-none focus:border-indigo-500/60"
+          maxlength="30" />
+        <button onclick="joinRoom()" class="send-btn rounded-xl px-3 py-2 text-white">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Rooms List -->
+    <div class="flex-1 overflow-y-auto py-2">
+      <p class="px-5 py-1.5 text-[10px] text-white/25 font-600 uppercase tracking-wider">Rooms</p>
+      <div id="roomList"></div>
+      <div id="noRooms" class="px-5 py-8 text-center text-white/20 text-xs">
+        <div class="text-3xl mb-2">💬</div>
+        Join a room to start chatting
+      </div>
+    </div>
+
+    <!-- Online Users -->
+    <div class="border-t border-white/5 px-4 py-3">
+      <p class="text-[10px] text-white/25 font-600 uppercase tracking-wider mb-2">Online</p>
+      <div id="onlineList" class="space-y-1 max-h-24 overflow-y-auto"></div>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════════ MAIN AREA ═══════════════════ -->
+  <main class="flex-1 flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <div class="px-5 py-3.5 flex items-center justify-between border-b border-white/5" style="background: #0e0e1c;">
+      <div class="flex items-center gap-3">
+        <!-- Mobile menu -->
+        <button class="md:hidden text-white/50 hover:text-white mr-1"
+          onclick="document.getElementById('sidebar').classList.toggle('open')">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div id="roomHeader" class="flex items-center gap-3">
+          <div class="text-white/20">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <div>
+            <p id="currentRoomName" class="text-white/30 text-sm font-500">Select a room</p>
+            <p id="roomMembersCount" class="text-white/20 text-xs hidden">0 members online</p>
+          </div>
+        </div>
+      </div>
+      <div id="headerActions" class="flex items-center gap-2">
+        <button onclick="scrollToBottom()" title="Scroll to bottom"
+          class="text-white/30 hover:text-white/70 p-1.5 rounded-lg hover:bg-white/5 transition-all">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages" class="flex-1 overflow-y-auto chat-bg px-4 py-4 space-y-1">
+      <div class="no-room" id="noRoomMsg">
+        <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-3xl mb-2">💬</div>
+        <p class="font-600 text-white/40">No room selected</p>
+        <p class="text-white/20 text-sm">Join a room from the sidebar to start chatting</p>
+      </div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div id="typingIndicator" class="px-5 py-1.5 hidden" style="background: #0e0e1c;">
+      <div class="flex items-center gap-2 text-white/40 text-xs">
+        <div class="flex gap-1">
+          <span class="typing-dot w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block"></span>
+          <span class="typing-dot w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block"></span>
+          <span class="typing-dot w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block"></span>
+        </div>
+        <span id="typingText"></span>
+      </div>
+    </div>
+
+    <!-- Reply preview -->
+    <div id="replyPreview" class="hidden px-5 py-2" style="background: #0e0e1c;">
+      <div class="reply-preview px-3 py-2 flex items-center justify-between">
+        <div class="min-w-0">
+          <p class="text-indigo-400 text-xs font-600 mb-0.5" id="replyUser"></p>
+          <p class="text-white/50 text-xs truncate" id="replyText"></p>
+        </div>
+        <button onclick="cancelReply()" class="text-white/30 hover:text-white/70 ml-3 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area px-4 py-3">
+      <div class="flex items-end gap-3">
+        <button id="emojiToggle" onclick="toggleEmojiPanel()"
+          class="text-white/40 hover:text-yellow-400 transition-colors p-1 flex-shrink-0 mb-1">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+        <textarea id="msgInput" rows="1" placeholder="Message..." class="flex-1 rounded-xl px-4 py-2.5 text-sm"
+          onkeydown="handleKeydown(event)" oninput="handleTyping()"></textarea>
+        <button id="sendBtn" onclick="sendMessage()"
+          class="send-btn rounded-xl p-2.5 text-white flex-shrink-0 disabled:opacity-40" disabled>
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Emoji Panel -->
+    <div id="emojiPanel" class="hidden px-4 pb-2" style="background: #0e0e1c;">
+      <div class="flex flex-wrap gap-1 p-2 rounded-xl"
+        style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);">
+        <% const
+          emojis=['😀','😂','🥰','😎','🤔','😢','😡','🤩','👍','👎','❤️','🔥','🎉','✨','💯','🙏','👀','💬','🚀','⭐','🌙','☀️','🌊','🌈','🎮','🎵','🍕','☕','🏆','💎','🤝','💪'];
+          %>
+          <% emojis.forEach(function(emoji) { %>
+            <button onclick="insertEmoji('<%= emoji %>')"
+              class="text-lg p-1 rounded-lg hover:bg-white/10 transition-all hover:scale-125 w-9 h-9 flex items-center justify-center">
+              <%= emoji %>
+            </button>
+            <% }) %>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Context Menu -->
+  <div id="ctxMenu" class="ctx-menu fixed hidden" style="z-index:300">
+    <div class="ctx-item" onclick="ctxReply()">
+      <svg class="w-3.5 h-3.5 mr-2 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+      </svg>
+      Reply
+    </div>
+    <div class="ctx-item" onclick="ctxCopy()">
+      <svg class="w-3.5 h-3.5 mr-2 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+      Copy
+    </div>
+    <div id="ctxDelete" class="ctx-item danger hidden" onclick="ctxDelete()">
+      <svg class="w-3.5 h-3.5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+      Delete
+    </div>
+  </div>
+
+  <!-- Emoji Reaction Picker -->
+  <div id="reactPicker" class="emoji-picker fixed hidden" style="z-index:200">
+    <% const reactEmojis=['❤️','👍','😂','😮','😢','🔥']; %>
+      <% reactEmojis.forEach(function(e) { %>
+        <button class="emoji-btn" onclick="sendReaction('<%= e %>')">
+          <%= e %>
+        </button>
+        <% }) %>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"
+    class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white/80 text-xs rounded-full px-4 py-2 hidden z-50 shadow-xl border border-white/10">
+  </div>
+
+  <script>
+
+    // ✅ Restore room after refresh
+    window.addEventListener('load', () => {
+      const savedRoom = localStorage.getItem('currentRoom');
+
+      if (savedRoom) {
+        if (!rooms[savedRoom]) {
+          rooms[savedRoom] = { unread: 0 };
+        }
+        switchRoom(savedRoom);
+      }
+    });
+
+    const TOKEN = '<%= token %>';
+    const ME = '<%= username %>';
+
+    const socket = io({ auth: { token: TOKEN } });
+
+    // ─── State ────────────────────────────────────────────
+    let currentRoom = null;
+    let rooms = JSON.parse(localStorage.getItem('rooms') || '{}'); let replyingTo = null;
+    let ctxTarget = null;
+    let typingTimer = null;
+    let isTyping = false;
+    let onlineUsers = [];
+    let lastDateLabel = null;
+
+    // ─── Init ─────────────────────────────────────────────
+    document.getElementById('myUsername').textContent = ME;
+    document.getElementById('myAvatar').textContent = ME[0].toUpperCase();
+    document.getElementById('myAvatar').style.background = getAvatarColor(ME);
+
+    document.getElementById('msgInput').addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      document.getElementById('sendBtn').disabled = !this.value.trim();
+    });
+
+    // ─── Socket Events ────────────────────────────────────
+
+    socket.on('connect', () => console.log('Connected'));
+
+    socket.on('chat-history', (msgs) => {
+      const container = document.getElementById('messages');
+      container.innerHTML = '';
+      lastDateLabel = null;
+      msgs.forEach(m => appendMessage(m, false));
+      scrollToBottom();
+
+      // Mark visible messages as seen
+      const ids = msgs.filter(m => m.sender !== ME && m.status !== 'seen').map(m => m._id);
+      if (ids.length) socket.emit('message-seen', ids);
+    });
+
+    socket.on('message', (msg) => {
+      if (msg.room !== currentRoom) {
+        // Unread notification
+        if (!rooms[msg.room]) rooms[msg.room] = { unread: 0 };
+        rooms[msg.room].unread = (rooms[msg.room].unread || 0) + 1;
+        updateRoomList();
+        return;
+      }
+      appendMessage(msg, true);
+      scrollToBottom();
+      if (msg.sender !== ME) {
+        socket.emit('message-seen', [msg._id]);
+      }
+    });
+
+    socket.on('message-status-update', ({ id, status }) => {
+      const tickEl = document.querySelector(`.msg-tick[data-id="${id}"]`);
+      if (tickEl) updateTick(tickEl, status);
+    });
+
+    socket.on('message-deleted', (id) => {
+      const el = document.getElementById('msg-' + id);
+      if (el) {
+        const bubble = el.querySelector('.msg-bubble');
+        if (bubble) {
+          bubble.textContent = 'This message was deleted';
+          el.classList.add('msg-deleted');
+          el.querySelector('.msg-actions')?.remove();
+          el.querySelector('.reaction-bar')?.remove();
+        }
+      }
+    });
+
+    socket.on('reaction-update', ({ messageId, reactions }) => {
+      const el = document.getElementById('msg-' + messageId);
+      if (!el) return;
+      let bar = el.querySelector('.reaction-bar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'reaction-bar';
+        el.querySelector('.msg-wrap').appendChild(bar);
+      }
+      bar.innerHTML = '';
+      const grouped = {};
+      reactions.forEach(r => {
+        if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, users: [], mine: false };
+        grouped[r.emoji].count++;
+        grouped[r.emoji].users.push(r.user);
+        if (r.user === ME) grouped[r.emoji].mine = true;
+      });
+      Object.entries(grouped).forEach(([emoji, data]) => {
+        const pill = document.createElement('button');
+        pill.className = 'reaction-pill' + (data.mine ? ' mine' : '');
+        pill.title = data.users.join(', ');
+        pill.innerHTML = `${emoji} <span class="text-white/60 text-[10px]">${data.count}</span>`;
+        pill.onclick = () => sendReactionTo(messageId, emoji);
+        bar.appendChild(pill);
+      });
+    });
+
+    socket.on('typing-update', (users) => {
+      const others = users.filter(u => u !== ME);
+      const el = document.getElementById('typingIndicator');
+      const txt = document.getElementById('typingText');
+      if (others.length === 0) {
+        el.classList.add('hidden');
+      } else {
+        el.classList.remove('hidden');
+        txt.textContent = others.length === 1
+          ? `${others[0]} is typing...`
+          : `${others.slice(0, 2).join(', ')} are typing...`;
+      }
+    });
+
+    socket.on('online-users', (users) => {
+      onlineUsers = users;
+      updateOnlineList();
+    });
+
+    socket.on('user-joined', ({ username, room }) => {
+      if (room === currentRoom && username !== ME) {
+        showSystemMsg(`${username} joined the room`);
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      showToast('Connection error: ' + err.message);
+    });
+
+    // ─── Room Management ──────────────────────────────────
+
+    function joinRoom() {
+      const input = document.getElementById('roomInput');
+      const name = input.value.trim().replace(/\s+/g, '-').toLowerCase();
+      if (!name) return;
+      input.value = '';
+
+      if (!rooms[name]) {
+        rooms[name] = { unread: 0 };
+        updateRoomList();
+      }
+      switchRoom(name);
+    }
+
+    function switchRoom(name) {
+      if (currentRoom === name) return;
+      currentRoom = name;
+
+      // ✅ ADD THIS LINE
+      localStorage.setItem('currentRoom', name);
+
+      if (rooms[name]) rooms[name].unread = 0;
+
+      socket.emit('join-room', name);
+
+      document.getElementById('noRoomMsg').style.display = 'none';
+      document.getElementById('currentRoomName').textContent = '# ' + name;
+      document.getElementById('currentRoomName').classList.remove('text-white/30');
+      document.getElementById('currentRoomName').classList.add('text-white');
+      document.getElementById('roomMembersCount').classList.remove('hidden');
+
+      cancelReply();
+      document.getElementById('typingIndicator').classList.add('hidden');
+      document.getElementById('msgInput').focus();
+      updateRoomList();
+    }
+    function updateRoomList() {
+      const list = document.getElementById('roomList');
+      const noRooms = document.getElementById('noRooms');
+      const keys = Object.keys(rooms);
+      noRooms.style.display = keys.length ? 'none' : 'block';
+      list.innerHTML = '';
+      keys.forEach(name => {
+        const item = document.createElement('div');
+        const unread = rooms[name]?.unread || 0;
+        item.className = 'room-item px-4 py-2.5 flex items-center justify-between rounded-lg mx-2 mb-0.5' + (name === currentRoom ? ' active' : '');
+        item.onclick = () => switchRoom(name);
+        item.innerHTML = `
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="text-white/30 text-sm">#</span>
+        <span class="text-sm truncate ${name === currentRoom ? 'text-white font-500' : 'text-white/60'}">${name}</span>
+      </div>
+      ${unread ? `<span class="unread-badge flex items-center justify-center text-white px-1.5">${unread}</span>` : ''}
+    `;
+        list.appendChild(item);
+      });
+
+      // ✅ Save rooms list
+      localStorage.setItem('rooms', JSON.stringify(rooms));
+    }
+
+    function updateOnlineList() {
+      const list = document.getElementById('onlineList');
+      list.innerHTML = '';
+      onlineUsers.slice(0, 8).forEach(user => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-2';
+        item.innerHTML = `
+      <div class="online-dot"></div>
+      <span class="text-white/50 text-xs truncate ${user === ME ? 'text-white/70 font-500' : ''}">${user}${user === ME ? ' (you)' : ''}</span>
+    `;
+        list.appendChild(item);
+      });
+      if (onlineUsers.length > 8) {
+        const more = document.createElement('p');
+        more.className = 'text-white/20 text-xs pl-4';
+        more.textContent = `+${onlineUsers.length - 8} more`;
+        list.appendChild(more);
+      }
+    }
+
+    // ─── Message Rendering ────────────────────────────────
+
+    function appendMessage(msg, animate) {
+      const container = document.getElementById('messages');
+      const isMine = msg.sender === ME;
+      const date = new Date(msg.timestamp);
+      const dateLabel = formatDateLabel(date);
+
+      if (dateLabel !== lastDateLabel) {
+        lastDateLabel = dateLabel;
+        const divider = document.createElement('div');
+        divider.className = 'date-divider my-4';
+        divider.innerHTML = `<span>${dateLabel}</span>`;
+        container.appendChild(divider);
+      }
+
+      const wrapper = document.createElement('div');
+      wrapper.id = 'msg-' + msg._id;
+      wrapper.className = `flex ${isMine ? 'justify-end' : 'justify-start'} gap-2.5 group ${animate ? 'msg-animate' : ''} ${msg.deleted ? 'msg-deleted' : ''} ${isMine ? 'msg-own' : 'msg-other'}`;
+
+      // Avatar (others only)
+      const avatarHtml = !isMine ? `
+    <div class="avatar text-white self-end mb-0.5 text-xs flex-shrink-0" style="background:${getAvatarColor(msg.sender)};width:28px;height:28px;font-size:11px;">
+      ${msg.sender[0].toUpperCase()}
+    </div>
+  ` : '';
+
+      // Reply preview
+      const replyHtml = msg.replyTo ? `
+    <div class="reply-preview px-2.5 py-1.5 mb-1 rounded-lg cursor-pointer" onclick="scrollToMsg('${msg.replyTo._id || msg.replyTo}')">
+      <p class="text-indigo-400 text-[10px] font-600">${msg.replyTo.sender || '...'}</p>
+      <p class="text-white/40 text-[11px] truncate">${msg.replyTo.text || '...'}</p>
+    </div>
+  ` : '';
+
+      // Tick
+      const tickHtml = isMine && !msg.deleted ? `
+    <span class="msg-tick tick-${msg.status}" data-id="${msg._id}">
+      ${getTick(msg.status)}
+    </span>
+  ` : '';
+
+      // Time
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      wrapper.innerHTML = `
+    ${avatarHtml}
+    <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'} max-w-[72%]">
+      ${!isMine ? `<p class="text-[10px] text-white/30 font-500 mb-0.5 px-1">${msg.sender}</p>` : ''}
+      <div class="msg-wrap relative">
+        ${replyHtml}
+        <div class="msg-bubble px-3.5 py-2.5 relative">
+          <p class="text-sm leading-relaxed">${escapeHtml(msg.text)}</p>
+        </div>
+        <!-- Actions -->
+        ${!msg.deleted ? `
+        <div class="msg-actions absolute ${isMine ? 'right-full mr-1' : 'left-full ml-1'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+          <button onclick="showReactPicker(event, '${msg._id}')" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all" title="React">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </button>
+          <button onclick="showCtxMenu(event, '${msg._id}', ${isMine}, '${escapeAttr(msg.text)}')" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all" title="More">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+          </button>
+        </div>
+        ` : ''}
+      </div>
+      <div class="flex items-center gap-1.5 px-1 mt-0.5">
+        <span class="text-[10px] text-white/20">${timeStr}</span>
+        ${tickHtml}
+      </div>
+      ${msg.reactions?.length ? buildReactionBar(msg) : '<div class="reaction-bar"></div>'}
+    </div>
+  `;
+
+      container.appendChild(wrapper);
+    }
+
+    function buildReactionBar(msg) {
+      if (!msg.reactions?.length) return '<div class="reaction-bar"></div>';
+      const grouped = {};
+      msg.reactions.forEach(r => {
+        if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, users: [], mine: false };
+        grouped[r.emoji].count++;
+        grouped[r.emoji].users.push(r.user);
+        if (r.user === ME) grouped[r.emoji].mine = true;
+      });
+      const pills = Object.entries(grouped).map(([emoji, data]) =>
+        `<button class="reaction-pill ${data.mine ? 'mine' : ''}" title="${data.users.join(', ')}" onclick="sendReactionTo('${msg._id}','${emoji}')">
+      ${emoji} <span class="text-white/60 text-[10px]">${data.count}</span>
+    </button>`
+      ).join('');
+      return `<div class="reaction-bar">${pills}</div>`;
+    }
+
+    function getTick(status) {
+      if (status === 'seen') return `<svg class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l4 4 9-9M2.5 12.75l4 4"/></svg>`;
+      if (status === 'delivered') return `<svg class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l4 4 9-9M2.5 12.75l4 4"/></svg>`;
+      return `<svg class="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5L20 7"/></svg>`;
+    }
+
+    function updateTick(el, status) {
+      el.className = `msg-tick tick-${status}`;
+      el.innerHTML = getTick(status);
+    }
+
+    function showSystemMsg(text) {
+      const container = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'flex justify-center my-2';
+      div.innerHTML = `<span class="text-white/20 text-xs bg-white/5 px-3 py-1 rounded-full">${text}</span>`;
+      container.appendChild(div);
+    }
+
+    // ─── Send Message ─────────────────────────────────────
+
+    function sendMessage() {
+      const input = document.getElementById('msgInput');
+      let text = input.value.trim();
+
+      // ✅ Fix broken text (remove unwanted line breaks inside words)
+      text = text
+        .replace(/[\r\n]+/g, ' ')     // remove \n and \r
+        .replace(/\s+/g, ' ')         // normalize spaces
+        .trim();
+      if (!text || !currentRoom) return;
+
+      socket.emit('send-message', { text, replyTo: replyingTo?._id });
+      input.value = '';
+      input.style.height = 'auto';
+      document.getElementById('sendBtn').disabled = true;
+      cancelReply();
+      stopTyping();
+    }
+
+    function handleKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    // ─── Typing ───────────────────────────────────────────
+
+    function handleTyping() {
+      if (!currentRoom) return;
+      if (!isTyping) {
+        isTyping = true;
+        socket.emit('typing', true);
+      }
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(stopTyping, 2000);
+    }
+
+    function stopTyping() {
+      if (isTyping) {
+        isTyping = false;
+        socket.emit('typing', false);
+      }
+    }
+
+    // ─── Emoji ────────────────────────────────────────────
+
+    function toggleEmojiPanel() {
+      document.getElementById('emojiPanel').classList.toggle('hidden');
+    }
+
+    function insertEmoji(emoji) {
+      const input = document.getElementById('msgInput');
+      const pos = input.selectionStart;
+      input.value = input.value.slice(0, pos) + emoji + input.value.slice(pos);
+      input.selectionStart = input.selectionEnd = pos + emoji.length;
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+      document.getElementById('emojiPanel').classList.add('hidden');
+    }
+
+    // ─── Reactions ────────────────────────────────────────
+
+    let reactTargetId = null;
+
+    function showReactPicker(e, msgId) {
+      e.stopPropagation();
+      reactTargetId = msgId;
+      const picker = document.getElementById('reactPicker');
+      picker.classList.remove('hidden');
+      const rect = e.target.getBoundingClientRect();
+      picker.style.top = (rect.top - 60) + 'px';
+      picker.style.left = rect.left + 'px';
+    }
+
+    function sendReaction(emoji) {
+      if (!reactTargetId) return;
+      socket.emit('react-message', { messageId: reactTargetId, emoji });
+      document.getElementById('reactPicker').classList.add('hidden');
+      reactTargetId = null;
+    }
+
+    function sendReactionTo(msgId, emoji) {
+      socket.emit('react-message', { messageId: msgId, emoji });
+    }
+
+    // ─── Context Menu ─────────────────────────────────────
+
+    function showCtxMenu(e, msgId, isMine, text) {
+      e.stopPropagation();
+      ctxTarget = { id: msgId, text };
+      const menu = document.getElementById('ctxMenu');
+      document.getElementById('ctxDelete').classList.toggle('hidden', !isMine);
+      menu.classList.remove('hidden');
+      const x = Math.min(e.clientX, window.innerWidth - 180);
+      const y = Math.min(e.clientY, window.innerHeight - 150);
+      menu.style.left = x + 'px';
+      menu.style.top = y + 'px';
+    }
+
+    function ctxReply() {
+      if (!ctxTarget) return;
+      const msg = { _id: ctxTarget.id, sender: '', text: ctxTarget.text };
+      const el = document.getElementById('msg-' + ctxTarget.id);
+      if (el) {
+        const senderEl = el.querySelector('p[class*="text-[10px]"]');
+        msg.sender = senderEl?.textContent || ME;
+      }
+      setReply(msg);
+      document.getElementById('ctxMenu').classList.add('hidden');
+    }
+
+    function ctxCopy() {
+      if (!ctxTarget) return;
+      navigator.clipboard.writeText(ctxTarget.text).then(() => showToast('Copied!'));
+      document.getElementById('ctxMenu').classList.add('hidden');
+    }
+
+    function ctxDelete() {
+      if (!ctxTarget) return;
+      socket.emit('delete-message', ctxTarget.id);
+      document.getElementById('ctxMenu').classList.add('hidden');
+    }
+
+    // ─── Reply ────────────────────────────────────────────
+
+    function setReply(msg) {
+      replyingTo = msg;
+      document.getElementById('replyPreview').classList.remove('hidden');
+      document.getElementById('replyUser').textContent = msg.sender;
+      document.getElementById('replyText').textContent = msg.text;
+      document.getElementById('msgInput').focus();
+    }
+
+    function cancelReply() {
+      replyingTo = null;
+      document.getElementById('replyPreview').classList.add('hidden');
+    }
+
+    // ─── Helpers ──────────────────────────────────────────
+
+    function scrollToBottom() {
+      const container = document.getElementById('messages');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function scrollToMsg(id) {
+      const el = document.getElementById('msg-' + id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-indigo-500/50', 'rounded-xl');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-500/50', 'rounded-xl'), 1500);
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2000);
+    }
+
+    function logout() {
+      if (confirm('Sign out of Nexus?')) window.location = '/';
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        // ✅ Only convert REAL line breaks, not random ones
+        .replace(/[\r\n]+/g, '<br>');
+    }
+
+    function escapeAttr(text) {
+      return text.replace(/'/g, "\\'").replace(/\n/g, ' ');
+    }
+
+    function formatDateLabel(date) {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      if (date.toDateString() === today.toDateString()) return 'Today';
+      if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+      return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+
+    function getAvatarColor(name) {
+      const colors = [
+        'linear-gradient(135deg,#4f46e5,#7c3aed)',
+        'linear-gradient(135deg,#0891b2,#0e7490)',
+        'linear-gradient(135deg,#059669,#047857)',
+        'linear-gradient(135deg,#d97706,#b45309)',
+        'linear-gradient(135deg,#dc2626,#b91c1c)',
+        'linear-gradient(135deg,#7c3aed,#6d28d9)',
+        'linear-gradient(135deg,#db2777,#be185d)',
+        'linear-gradient(135deg,#0284c7,#0369a1)',
+      ];
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      return colors[Math.abs(hash) % colors.length];
+    }
+
+    // ─── Click outside handlers ───────────────────────────
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#ctxMenu')) document.getElementById('ctxMenu').classList.add('hidden');
+      if (!e.target.closest('#reactPicker') && !e.target.closest('[onclick^="showReactPicker"]')) {
+        document.getElementById('reactPicker').classList.add('hidden');
+      }
+      if (!e.target.closest('#emojiPanel') && !e.target.closest('#emojiToggle')) {
+        document.getElementById('emojiPanel').classList.add('hidden');
+      }
+      if (e.target === document.getElementById('sidebar').parentNode) {
+        document.getElementById('sidebar').classList.remove('open');
+      }
+    });
+
+    // ─── Keyboard shortcuts ───────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        cancelReply();
+        document.getElementById('ctxMenu').classList.add('hidden');
+        document.getElementById('reactPicker').classList.add('hidden');
+        document.getElementById('emojiPanel').classList.add('hidden');
+      }
+    });
+
+    // ✅ Restore room after refresh
+    window.addEventListener('load', () => {
+      const savedRoom = localStorage.getItem('currentRoom');
+
+      if (savedRoom) {
+        if (!rooms[savedRoom]) {
+          rooms[savedRoom] = { unread: 0 };
+        }
+        switchRoom(savedRoom);
+      }
+    });
+
+  </script>
+  
+</body>
+</html>

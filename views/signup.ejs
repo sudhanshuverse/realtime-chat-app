@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Signup - Nexus</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    * { font-family: 'DM Sans', sans-serif; }
+    h1, h2, .brand { font-family: 'Syne', sans-serif; }
+
+    body {
+      background: #060612;
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .input-field {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen">
+
+  <div class="w-full max-w-md px-4">
+
+    <!-- Title -->
+    <div class="text-center mb-8">
+      <h1 class="text-2xl text-white font-bold">Create Account</h1>
+      <p class="text-white/40 text-sm">Join Nexus 🚀</p>
+    </div>
+
+    <!-- Card -->
+    <div class="glass p-8 rounded-2xl">
+
+      <form id="registerForm" class="space-y-4">
+
+        <div>
+          <label class="text-white/50 text-sm">Username</label>
+          <input id="r-user" type="text"
+            class="input-field w-full px-4 py-3 rounded-xl mt-1"
+            placeholder="Choose username">
+        </div>
+
+        <div>
+          <label class="text-white/50 text-sm">Password</label>
+          <input id="r-pass" type="password"
+            class="input-field w-full px-4 py-3 rounded-xl mt-1"
+            placeholder="Enter password">
+        </div>
+
+        <div>
+          <label class="text-white/50 text-sm">Confirm Password</label>
+          <input id="r-confirm" type="password"
+            class="input-field w-full px-4 py-3 rounded-xl mt-1"
+            placeholder="Confirm password">
+        </div>
+
+        <button type="submit"
+          class="btn-primary w-full py-3 rounded-xl text-white font-semibold">
+          Create Account
+        </button>
+
+      </form>
+
+      <!-- Link -->
+      <p class="text-center text-white/40 text-sm mt-5">
+        Already have an account?
+        <a href="/login" class="text-indigo-400 hover:underline">Login</a>
+      </p>
+
+    </div>
+
+  </div>
+
+<script>
+document.getElementById('registerForm').onsubmit = async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('r-user').value.trim();
+  const password = document.getElementById('r-pass').value;
+  const confirm = document.getElementById('r-confirm').value;
+
+  if (!username || !password) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  if (password !== confirm) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  const res = await fetch('/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (data.error) {
+    alert(data.error);
+  } else {
+    alert("Account created successfully!");
+    window.location = "/login";
+  }
+};
+</script>
+
+</body>
+</html>

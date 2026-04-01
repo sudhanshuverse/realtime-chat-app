@@ -1,0 +1,17 @@
+<h2>Welcome <%= username %></h2>
+
+<form id="joinForm">
+    <input id="room" placeholder="Enter room" required />
+    <button>Join Chat</button>
+</form>
+
+<script>
+const token = "<%= token %>";
+
+document.getElementById('joinForm').onsubmit = (e) => {
+    e.preventDefault();
+    const room = document.getElementById('room').value;
+
+    window.location = `/chat?room=${room}&token=${token}`;
+};
+</script>
