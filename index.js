@@ -15,11 +15,13 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
+const DB_PATH = "mongodb://root:root@ac-u0nafti-shard-00-00.r9jtfbr.mongodb.net:27017,ac-u0nafti-shard-00-01.r9jtfbr.mongodb.net:27017,ac-u0nafti-shard-00-02.r9jtfbr.mongodb.net:27017/file?ssl=true&replicaSet=atlas-dvojmu-shard-0&authSource=admin&appName=Practice";
+
 
 // DB
 mongoose.connect('mongodb://127.0.0.1:27017/chat-app')
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log("❌ DB Error:", err));
+  .then(() => console.log("MongoDB Connected"))
+  .catch(err => console.log("DB Error:", err));
 
 // Middleware
 app.set('view engine', 'ejs');
@@ -234,6 +236,6 @@ io.on('connection', async (socket) => {
   });
 });
 
-server.listen(8000, () => {
+server.listen(4000, () => {
   console.log("🚀 Server running at http://localhost:8000");
 });
