@@ -15,11 +15,11 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
-const DB_PATH = "mongodb://root:root@ac-u0nafti-shard-00-00.r9jtfbr.mongodb.net:27017,ac-u0nafti-shard-00-01.r9jtfbr.mongodb.net:27017,ac-u0nafti-shard-00-02.r9jtfbr.mongodb.net:27017/file?ssl=true&replicaSet=atlas-dvojmu-shard-0&authSource=admin&appName=Practice";
+const DB_PATH = "mongodb://root:root@ac-u0nafti-shard-00-00.r9jtfbr.mongodb.net:27017,ac-u0nafti-shard-00-01.r9jtfbr.mongodb.net:27017,ac-u0nafti-shard-00-02.r9jtfbr.mongodb.net:27017/chat?ssl=true&replicaSet=atlas-dvojmu-shard-0&authSource=admin&appName=Practice";
 
 
 // DB
-mongoose.connect('mongodb://127.0.0.1:27017/chat-app')
+mongoose.connect(DB_PATH)
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("DB Error:", err));
 
